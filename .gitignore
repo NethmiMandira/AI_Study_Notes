@@ -36,6 +36,20 @@ migrate_working_dir/
 .env.*
 !.env.example
 
+# Firebase / app secret configuration (keep local and private)
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_options.dart
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+
+# Example templates are safe to commit
+!**/*.example.*
+!lib/firebase_options.example.dart
+!android/app/google-services.example.json
+
 # Local platform configuration and generated files
 /android/local.properties
 /android/.gradle/

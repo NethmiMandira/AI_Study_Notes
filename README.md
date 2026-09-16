@@ -52,25 +52,42 @@ cd AI_Study_Notes
 flutter pub get
 ```
 
-3. Configure Firebase for the platforms you want to run. The repository
-   includes generated Firebase client configuration files, but each Firebase
-   project should use its own configuration when publishing an app.
+3. Create your local environment file from the example template.
 
-4. Add the Gemini API key. Create a `.env` file in the project root:
+```powershell
+copy .env.example .env
+```
+
+Update `.env` with your own Gemini API key. Keep this file private and never
+commit it to GitHub.
+
+4. Configure Firebase locally for the platforms you want to run. The repository
+  includes example templates only. Generate your own Firebase configuration for
+  your project and keep those values private.
+
+Example files are included for reference:
+
+- `.env.example`
+- `lib/firebase_options.example.dart`
+- `android/app/google-services.example.json`
+
+For the local app config, you can also use a placeholder file and then replace
+it with your project's real Firebase values on your machine before running the
+app.
+
+The app loads the `.env` file when it is available. You can also pass the key
+at build time:
 
 ```dotenv
 GEMINI_API_KEY=your_google_ai_studio_key
 ```
-
-The app loads this file when it is available. You can also pass the key at
-build time:
 
 ```powershell
 flutter run --dart-define=GEMINI_API_KEY=your_google_ai_studio_key
 ```
 
 For a release build, pass the same define to the build command. Never commit a
-real API key to the repository.
+real API key or live Firebase config to the repository.
 
 ## Run the App
 
