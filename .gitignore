@@ -37,6 +37,7 @@ migrate_working_dir/
 !.env.example
 
 # Firebase / app secret configuration (keep local and private)
+firebase.json
 **/google-services.json
 **/GoogleService-Info.plist
 **/firebase_options.dart

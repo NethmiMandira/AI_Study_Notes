@@ -68,6 +68,7 @@ commit it to GitHub.
 Example files are included for reference:
 
 - `.env.example`
+- `firebase.example.json`
 - `lib/firebase_options.example.dart`
 - `android/app/google-services.example.json`
 
