@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "952089546214",
+    "project_id": "ai-study-notes-app-96164",
+    "storage_bucket": "ai-study-notes-app-96164.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952089546214:android:e00226b70f84b010425a27",
+        "android_client_info": {
+          "package_name": "com.example.ai_study_notes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "952089546214-o25nicipjbr95trdu0q5ht04e1cqr88j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ai_study_notes",
+            "certificate_hash": "a87082b6dcc007005b10dd591d560cb8bf830520"
+          }
+        },
+        {
+          "client_id": "952089546214-ki2j43acurf8gb4srq2t99sn5iett5iv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAlxxOZ1wgr7qE8oFsk9IGJ6_Tceq2Kn0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "952089546214-ki2j43acurf8gb4srq2t99sn5iett5iv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "952089546214-deo2f6oovj5f4dtjpmb3baidusgn2md9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aiStudyNotes"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

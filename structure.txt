@@ -1,0 +1,86 @@
+ai_study_notes/
+├── android/
+├── ios/
+├── lib/
+│   ├── main.dart
+│   │
+│   ├── core/
+│   │   ├── constants/
+│   │   │   ├── app_colors.dart
+│   │   │   └── app_constants.dart
+│   │   ├── theme/
+│   │   │   ├── app_theme.dart
+│   │   │   └── theme_provider.dart
+│   │   └── utils/
+│   │       ├── pdf_parser.dart
+│   │       ├── ocr_helper.dart
+│   │       └── validators.dart
+│   │
+│   ├── data/
+│   │   ├── datasources/
+│   │   │   └── remote/
+│   │   │       ├── firebase_auth_service.dart
+│   │   │       ├── firebase_firestore_service.dart
+│   │   │       └── gemini_ai_service.dart
+│   │   └── models/
+│   │       ├── note_model.dart
+│   │       ├── ai_generated_content_model.dart
+│   │       └── user_model.dart
+│   │
+│   └── features/
+│       ├── auth/
+│       │   ├── providers/
+│       │   │   └── auth_provider.dart
+│       │   ├── screens/
+│       │   │   ├── enter_email_screen.dart
+│       │   │   ├── email_verification_screen.dart
+│       │   │   ├── set_password_screen.dart
+│       │   │   ├── login_screen.dart
+│       │   │   ├── forgot_password_screen.dart
+│       │   │   └── reset_password_screen.dart
+│       │   └── widgets/
+│       │       ├── auth_text_field.dart
+│       │       └── custom_auth_button.dart
+│       │
+│       ├── notes/
+│       │   ├── providers/
+│       │   │   └── note_provider.dart
+│       │   ├── screens/
+│       │   │   ├── home_screen.dart
+│       │   │   ├── create_note_screen.dart
+│       │   │   ├── note_detail_screen.dart
+│       │   │   └── search_notes_screen.dart
+│       │   └── widgets/
+│       │       ├── note_card.dart
+│       │       ├── file_picker_bottom_sheet.dart
+│       │       └── search_bar_widget.dart
+│       │
+│       ├── ai_tools/
+│       │   ├── providers/
+│       │   │   └── ai_provider.dart
+│       │   ├── screens/
+│       │   │   ├── summarize_screen.dart
+│       │   │   ├── exam_prep_screen.dart
+│       │   │   └── translate_screen.dart
+│       │   └── widgets/
+│       │       ├── summary_view.dart
+│       │       ├── mcq_card.dart
+│       │       ├── essay_question_card.dart
+│       │       └── language_selector_dropdown.dart
+│       │
+│       └── settings/
+│           ├── providers/
+│           │   └── settings_provider.dart
+│           ├── screens/
+│           │   └── settings_screen.dart
+│           └── widgets/
+│               └── theme_toggle_tile.dart
+│
+├── pubspec.yaml
+└── README.md
+service_vz51fxg
+template_o5q172p
+w4FU0SHsQU6WYPkPn
+
+
+hari hebei user kenek save wenn oni mehema enter email and first name and last name email verify> if verify> set password
