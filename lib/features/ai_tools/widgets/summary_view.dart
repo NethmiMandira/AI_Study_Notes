@@ -101,28 +101,59 @@ class SummaryView extends StatelessWidget {
                     children: summary.importantTerms.entries.map((entry) {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(16),
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFFE2E8F0),
+                          ),
                         ),
-                        child: Row(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SelectableText(
-                              '${entry.key}: ',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: Color(0xFF1E293B),
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  width: 4,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFC084FC),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: SelectableText(
+                                    entry.key,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      height: 1.3,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Expanded(
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.only(top: 10),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                              ),
                               child: SelectableText(
                                 entry.value,
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  height: 1.5,
+                                  height: 1.55,
                                   color: Color(0xFF475569),
                                 ),
                               ),

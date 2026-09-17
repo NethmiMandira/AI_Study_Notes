@@ -15,46 +15,50 @@ class TranslateScreen extends StatefulWidget {
 class _TranslateScreenState extends State<TranslateScreen> {
   String selectedLang = 'Sinhala';
 
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFEF4444),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
   Future<void> _handleTranslation() async {
+    if (widget.noteContent.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note content is empty. Nothing to translate.'),
+          backgroundColor: Colors.amber,
+        ),
+      );
+      return;
+    }
+
     try {
       await context
           .read<AiProvider>()
           .translate(widget.noteContent, selectedLang);
-    } catch (e, stackTrace) {
-      debugPrint('Error initiating translation: $e\n$stackTrace');
-      _showErrorSnackBar('Failed to request translation: ${e.toString()}');
+    } catch (e) {
+      // Handles unhandled synchronous exceptions if any escape the provider
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
+  }
+
+  /// Parses technical/JSON API exception strings into user-friendly messages.
+  String _formatErrorMessage(String rawError) {
+    if (rawError.contains('503') || rawError.contains('UNAVAILABLE')) {
+      return 'The AI service is currently experiencing high demand. Please try again in a few moments.';
+    } else if (rawError.contains('429') || rawError.contains('RESOURCE_EXHAUSTED')) {
+      return 'Rate limit exceeded. Please wait a moment before trying again.';
+    } else if (rawError.contains('SocketException') || rawError.contains('NetworkException')) {
+      return 'Network error. Please check your internet connection.';
+    } else if (rawError.contains('401') || rawError.contains('UNAUTHENTICATED')) {
+      return 'Authentication failed. Please check your API credentials.';
+    }
+    
+    // Fallback cleaning if string contains raw exception wrapper
+    return rawError
+        .replaceAll(RegExp(r'GenerativeAIException:?'), '')
+        .replaceAll(RegExp(r'AI request failed \(.*?\):?'), '')
+        .trim();
   }
 
   @override
@@ -93,14 +97,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                 size: 18,
                 color: textPrimary,
               ),
-              onPressed: () {
-                try {
-                  Navigator.pop(context);
-                } catch (e, stackTrace) {
-                  debugPrint('Navigation error: $e\n$stackTrace');
-                  _showErrorSnackBar('Unable to go back: ${e.toString()}');
-                }
-              },
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
@@ -125,13 +122,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                 LanguageSelectorDropdown(
                   selectedLanguage: selectedLang,
                   onChanged: (val) {
-                    try {
-                      if (val != null) setState(() => selectedLang = val);
-                    } catch (e, stackTrace) {
-                      debugPrint('Error updating language: $e\n$stackTrace');
-                      _showErrorSnackBar(
-                          'Failed to select language: ${e.toString()}');
-                    }
+                    if (val != null) setState(() => selectedLang = val);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -229,7 +220,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            aiProvider.errorMessage!,
+                            _formatErrorMessage(aiProvider.errorMessage!),
                             style: const TextStyle(
                               color: Color(0xFF991B1B),
                               fontSize: 14,

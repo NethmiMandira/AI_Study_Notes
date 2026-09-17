@@ -4,6 +4,7 @@ import 'package:ai_study_notes/features/ai_tools/providers/ai_provider.dart';
 import 'package:ai_study_notes/features/ai_tools/widgets/mcq_card.dart';
 import 'package:ai_study_notes/features/ai_tools/widgets/essay_question_card.dart';
 import 'package:ai_study_notes/features/ai_tools/widgets/short_answer_card.dart';
+
 class ExamPrepScreen extends StatefulWidget {
   final String noteContent;
 
@@ -54,6 +55,59 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
     );
   }
 
+  Future<void> _generateQuestions(BuildContext context) async {
+    if (selectedTypes.isEmpty) {
+      _showErrorSnackBar('Please select at least one question type.');
+      return;
+    }
+
+    final countText = questionCountController.text.trim();
+    final count = int.tryParse(countText);
+
+    if (count == null || count < 1 || count > 20) {
+      _showErrorSnackBar('Please enter a valid number of questions between 1 and 20.');
+      return;
+    }
+
+    await context.read<AiProvider>().generateExamPrep(
+          widget.noteContent,
+          selectedTypes,
+          count,
+        );
+  }
+
+  Widget _typeChoice(String value, String label) {
+    const Color purpleGlow = Color(0xFFC084FC);
+    final isSelected = selectedTypes.contains(value);
+
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          if (selected) {
+            selectedTypes.add(value);
+          } else {
+            // Keep at least one type selected or allow deselection and handle in trigger
+            selectedTypes.remove(value);
+          }
+        });
+      },
+      selectedColor: purpleGlow,
+      backgroundColor: const Color(0xFFF1F5F9),
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide.none,
+      ),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : const Color(0xFF64748B),
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 13,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color scaffoldBgColor = Color(0xFFF8FAFC);
@@ -91,14 +145,7 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
                 size: 18,
                 color: textPrimary,
               ),
-              onPressed: () {
-                try {
-                  Navigator.pop(context);
-                } catch (e, stackTrace) {
-                  debugPrint('Navigation error: $e\n$stackTrace');
-                  _showErrorSnackBar('Unable to go back: ${e.toString()}');
-                }
-              },
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
@@ -240,31 +287,6 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Inline Error Notice (If present while not loading)
-              if (aiProvider.errorMessage != null && !aiProvider.isLoading)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      aiProvider.errorMessage!,
-                      style: const TextStyle(
-                        color: Color(0xFF991B1B),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-
               // Main Dynamic Content Area
               Expanded(
                 child: aiProvider.isLoading
@@ -335,16 +357,8 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
                                   ),
                                   const SizedBox(height: 16),
                                   OutlinedButton.icon(
-                                    onPressed: () {
-                                      try {
-                                        _generateQuestions(context);
-                                      } catch (e, stackTrace) {
-                                        debugPrint(
-                                            'Error in retry action: $e\n$stackTrace');
-                                        _showErrorSnackBar(
-                                            'Retry failed: ${e.toString()}');
-                                      }
-                                    },
+                                    onPressed: () =>
+                                        _generateQuestions(context),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: const Color(0xFF991B1B),
                                       side: const BorderSide(
@@ -515,70 +529,4 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
       ),
     );
   }
-
-  Widget _typeChoice(String value, String label) {
-    const Color purpleGlow = Color(0xFFC084FC);
-    final isSelected = selectedTypes.contains(value);
-
-    return FilterChip(
-      label: Text(label),
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF64748B),
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        fontSize: 13,
-      ),
-      selected: isSelected,
-      selectedColor: purpleGlow,
-      backgroundColor: const Color(0xFFF1F5F9),
-      showCheckmark: false,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? purpleGlow : Colors.transparent,
-          width: 1,
-        ),
-      ),
-      onSelected: (selected) {
-        try {
-          setState(() {
-            if (selected) {
-              selectedTypes.add(value);
-            } else {
-              selectedTypes.remove(value);
-            }
-          });
-        } catch (e, stackTrace) {
-          debugPrint('Error toggling type selection: $e\n$stackTrace');
-          _showErrorSnackBar(
-              'Failed to update question type selection: ${e.toString()}');
-        }
-      },
-    );
-  }
-
-  Future<void> _generateQuestions(BuildContext context) async {
-    final questionCount = int.tryParse(questionCountController.text.trim());
-    if (questionCount == null || questionCount < 1 || questionCount > 20) {
-      _showErrorSnackBar('Choose between 1 and 20 questions per type.');
-      return;
-    }
-
-    if (selectedTypes.isEmpty) {
-      _showErrorSnackBar('Please select at least one question type.');
-      return;
-    }
-
-    try {
-      await context.read<AiProvider>().generateExamPrep(
-            widget.noteContent,
-            selectedTypes,
-            questionCount,
-          );
-    } catch (e, stackTrace) {
-      debugPrint('Error generating exam questions: $e\n$stackTrace');
-      _showErrorSnackBar('Failed to generate exam questions: ${e.toString()}');
-    }
-  }
-
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ai_study_notes/data/datasources/remote/gemini_ai_service.dart';
 import 'package:ai_study_notes/data/models/ai_generated_content_model.dart';
@@ -65,7 +66,30 @@ class AiProvider extends ChangeNotifier {
 
   String _friendlyErrorMessage(Object error) {
     debugPrint('AI service error: $error');
-    final message = error.toString().toLowerCase();
+    final rawMessage = error.toString();
+    final message = rawMessage.toLowerCase();
+
+    if (message.contains('503') ||
+      message.contains('high demand') ||
+      message.contains('spikes in demand')) {
+      return 'The AI service is currently experiencing high demand. Please try again in a few moments.';
+    }
+    if (message.contains('429') ||
+        message.contains('resource exhausted') ||
+        message.contains('rate limit') ||
+        message.contains('quota')) {
+      return 'Rate limit reached. Please wait a moment before trying again.';
+    }
+    if (message.contains('socket') ||
+        message.contains('network') ||
+        message.contains('timeout')) {
+      return 'Could not reach the AI service. Check your connection and try again.';
+    }
+    if (message.contains('401') ||
+        message.contains('unauthenticated') ||
+        message.contains('unauthorized')) {
+      return 'Authentication failed. Please check your AI service configuration.';
+    }
 
     if (message.contains('api key') || message.contains('unauthorized')) {
       return 'The AI service is not configured correctly. Check the Gemini API key.';
@@ -73,20 +97,15 @@ class AiProvider extends ChangeNotifier {
     if (message.contains('not found') || message.contains('not available')) {
       return 'The selected Gemini model is unavailable for this account. Update the model configuration and try again.';
     }
-    if (message.contains('quota') ||
-        message.contains('rate limit') ||
-        message.contains('resource exhausted')) {
-      return 'Gemini usage quota exceeded. Wait and try again, or check your Google AI Studio billing and rate limits.';
-    }
     if (error is FormatException) {
       return 'The AI response was invalid: ${error.message}';
     }
-    if (message.contains('network') || message.contains('socket') || message.contains('timeout')) {
-      return 'Could not reach the AI service. Check your connection and try again.';
-    }
 
-    final detail = error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-    return 'AI request failed (${error.runtimeType}): $detail';
+    final detail = rawMessage
+        .replaceAll(RegExp(r'GenerativeAIException:?\s*'), '')
+        .replaceFirst(RegExp(r'^Exception:\s*'), '')
+        .trim();
+    return 'AI request failed (${error.runtimeType}):$detail';
   }
 
   // Exam Prep Action
@@ -152,10 +171,11 @@ class AiProvider extends ChangeNotifier {
     _setLoading(true);
     _errorMessage = null;
     try {
-      _translatedExamPrep = await _aiService.translateExamPrep(
+      final responseText = await _aiService.translateExamPrep(
         trimmedContent,
         trimmedLanguage,
       );
+      _translatedExamPrep = _extractCleanText(responseText);
     } catch (error) {
       _errorMessage = _friendlyErrorMessage(error);
     } finally {
@@ -184,12 +204,65 @@ class AiProvider extends ChangeNotifier {
     _setLoading(true);
     _errorMessage = null;
     try {
-      _translatedText =
-          await _aiService.translateContent(trimmedText, trimmedLanguage);
+      final rawResponse = await _aiService.translateContent(
+        trimmedText,
+        trimmedLanguage,
+      );
+      _translatedText = _extractCleanText(rawResponse);
     } catch (error) {
       _errorMessage = _friendlyErrorMessage(error);
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Helper method to clean Markdown code blocks and extract raw translation text
+  String _extractCleanText(String rawInput) {
+    String cleaned = rawInput.trim();
+
+    // Strip Markdown code block wrappers (```json ... ``` or ``` ...)
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned
+          .replaceAll(RegExp(r'^```json\s*'), '')
+          .replaceAll(RegExp(r'\s*```$'), '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned
+          .replaceAll(RegExp(r'^```\s*'), '')
+          .replaceAll(RegExp(r'\s*```$'), '');
+    }
+
+    cleaned = cleaned.trim();
+
+    // Try parsing as JSON object in case Gemini returns a JSON structure
+    try {
+      final decoded = jsonDecode(cleaned);
+      if (decoded is Map<String, dynamic>) {
+        if (decoded.containsKey('translated_text')) {
+          return decoded['translated_text'].toString();
+        } else if (decoded.containsKey('translation')) {
+          return decoded['translation'].toString();
+        } else if (decoded.containsKey('text')) {
+          return decoded['text'].toString();
+        }
+      }
+    } catch (_) {
+      // If parsing fails, fall back to plain string treatment
+    }
+
+    // Regex fallback to extract string if JSON decoding fails due to escaping/formatting issues
+    final match = RegExp(
+      r'"(?:translated_text|translation|text)"\s*:\s*"(.*?)"',
+      dotAll: true,
+    ).firstMatch(cleaned);
+
+    if (match != null && match.group(1) != null) {
+      return match
+          .group(1)!
+          .replaceAll(r'\"', '"')
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\\', '\\');
+    }
+
+    return cleaned;
   }
 }

@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_study_notes/features/ai_tools/providers/ai_provider.dart';
 import 'package:ai_study_notes/features/ai_tools/widgets/summary_view.dart';
 
-class SummarizeScreen extends StatelessWidget {
+class SummarizeScreen extends StatefulWidget {
   final String noteContent;
   final Set<String> selectedSections;
 
@@ -18,46 +19,121 @@ class SummarizeScreen extends StatelessWidget {
     },
   });
 
-  void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFEF4444),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+  @override
+  State<SummarizeScreen> createState() => _SummarizeScreenState();
+}
+
+class _SummarizeScreenState extends State<SummarizeScreen> {
+  late Set<String> _activeSections;
+  String? _localError;
+
+  final List<Map<String, String>> _sectionOptions = const [
+    {'key': 'shortSummary', 'label': 'Short Summary'},
+    {'key': 'detailedSummary', 'label': 'Detailed'},
+    {'key': 'keyPoints', 'label': 'Key Points'},
+    {'key': 'importantTerms', 'label': 'Terms'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _activeSections = Set<String>.from(widget.selectedSections);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _handleSummarize();
+      }
+    });
   }
 
-  Future<void> _handleSummarize(BuildContext context) async {
+  /// Parses raw exception strings / JSON into clean user messages
+  String _formatErrorMessage(String rawError) {
+    if (rawError.contains('503') || rawError.contains('UNAVAILABLE')) {
+      return 'The AI service is currently experiencing high demand. Please try again in a few moments.';
+    }
+    if (rawError.contains('429') || rawError.contains('RESOURCE_EXHAUSTED')) {
+      return 'Rate limit reached. Please wait a moment before trying again.';
+    }
+
+    // Try extracting message key if raw string contains JSON payload
     try {
-      await context.read<AiProvider>().summarize(noteContent);
+      final jsonStart = rawError.indexOf('{');
+      final jsonEnd = rawError.lastIndexOf('}');
+      if (jsonStart != -1 && jsonEnd != -1) {
+        final jsonStr = rawError.substring(jsonStart, jsonEnd + 1);
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is Map && decoded.containsKey('error')) {
+          final errMap = decoded['error'];
+          if (errMap is Map && errMap.containsKey('message')) {
+            return errMap['message'].toString();
+          }
+        }
+      }
+    } catch (_) {
+      // Fallback to clean default if JSON parsing fails
+    }
+
+    return rawError.replaceAll(RegExp(r'^Exception:\s*'), '');
+  }
+
+  Future<void> _handleSummarize() async {
+    if (!mounted) return;
+
+    setState(() {
+      _localError = null;
+    });
+
+    if (widget.noteContent.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _localError =
+              'Note content is empty. Please provide valid text to summarize.';
+        });
+      }
+      return;
+    }
+
+    try {
+      await context.read<AiProvider>().summarize(widget.noteContent);
     } catch (e, stackTrace) {
-      debugPrint('Error initiating summary: $e\n$stackTrace');
-      if (context.mounted) {
-        _showErrorSnackBar(
-            context, 'Failed to request summary: ${e.toString()}');
+      debugPrint('Unhandled error in _handleSummarize: $e\n$stackTrace');
+      if (mounted) {
+        final sanitizedMsg = _formatErrorMessage(e.toString());
+        setState(() {
+          _localError = sanitizedMsg;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(sanitizedMsg),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
+  }
+
+  void _toggleSection(String key) {
+    if (!mounted) return;
+    setState(() {
+      if (_activeSections.contains(key)) {
+        if (_activeSections.length > 1) {
+          _activeSections.remove(key);
+        } else {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('At least one section must be selected.'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        _activeSections.add(key);
+      }
+    });
   }
 
   @override
@@ -65,10 +141,13 @@ class SummarizeScreen extends StatelessWidget {
     const Color scaffoldBgColor = Color(0xFFF8FAFC);
     const Color textPrimary = Color(0xFF1E293B);
     const Color textSecondary = Color(0xFF64748B);
-    const Color purpleGlow = Color(0xFFC084FC);
+    const Color purpleGlow = Color(0xFFB877FF);
     const Color cardBgColor = Colors.white;
 
     final aiProvider = context.watch<AiProvider>();
+    final rawError = _localError ?? aiProvider.errorMessage;
+    final activeError =
+        rawError != null ? _formatErrorMessage(rawError) : null;
 
     return Scaffold(
       backgroundColor: scaffoldBgColor,
@@ -97,15 +176,7 @@ class SummarizeScreen extends StatelessWidget {
                 size: 18,
                 color: textPrimary,
               ),
-              onPressed: () {
-                try {
-                  Navigator.pop(context);
-                } catch (e, stackTrace) {
-                  debugPrint('Navigation error: $e\n$stackTrace');
-                  _showErrorSnackBar(
-                      context, 'Unable to go back: ${e.toString()}');
-                }
-              },
+              onPressed: () => Navigator.maybePop(context),
             ),
           ),
         ),
@@ -118,62 +189,106 @@ class SummarizeScreen extends StatelessWidget {
             letterSpacing: -0.3,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 20,
+                  color: purpleGlow,
+                ),
+                onPressed: aiProvider.isLoading ? null : _handleSummarize,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: purpleGlow.withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: aiProvider.isLoading
-                      ? null
-                      : () => _handleSummarize(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: purpleGlow,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  icon: const Icon(Icons.summarize_rounded, size: 20),
-                  label: const Text(
-                    'Generate Summary',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
+        child: Column(
+          children: [
+            // Filter Chip Selector Header
+            Container(
+              color: scaffoldBgColor,
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0, vertical: 12.0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: _sectionOptions.map((opt) {
+                    final key = opt['key']!;
+                    final label = opt['label']!;
+                    final isSelected = _activeSections.contains(key);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        selected: isSelected,
+                        showCheckmark: true,
+                        checkmarkColor: Colors.white,
+                        label: Text(label),
+                        labelStyle: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : textSecondary,
+                        ),
+                        selectedColor: purpleGlow,
+                        backgroundColor: cardBgColor,
+                        elevation: isSelected ? 3 : 0,
+                        shadowColor: purpleGlow.withValues(alpha: 0.35),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: isSelected
+                                ? purpleGlow
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        onSelected: (_) => _toggleSection(key),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: aiProvider.isLoading
-                    ? Center(
+            ),
+            const SizedBox(height: 12),
+
+            // Main Content Area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 8.0),
+                child: Builder(
+                  builder: (context) {
+                    if (aiProvider.isLoading) {
+                      return Center(
                         child: Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
                             color: cardBgColor,
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: purpleGlow.withValues(alpha: 0.06),
-                                blurRadius: 16,
+                                color: purpleGlow.withValues(alpha: 0.08),
+                                blurRadius: 20,
                                 spreadRadius: 2,
                                 offset: const Offset(0, 6),
                               ),
@@ -186,182 +301,200 @@ class SummarizeScreen extends StatelessWidget {
                                 strokeWidth: 3,
                                 color: purpleGlow,
                               ),
-                              SizedBox(height: 16),
+                              SizedBox(height: 18),
                               Text(
                                 'Summarizing your study note...',
                                 style: TextStyle(
                                   color: textPrimary,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      )
-                    : aiProvider.errorMessage != null
-                        ? Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: const Color(0xFFFCA5A5),
-                                  width: 1,
+                      );
+                    }
+
+                    if (activeError != null) {
+                      return Center(
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 32,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: const Color(0xFFFECDD3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFE4E6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFE11D48),
+                                  size: 36,
                                 ),
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline_rounded,
-                                    color: Color(0xFFEF4444),
-                                    size: 32,
+                              const SizedBox(height: 20),
+                              Text(
+                                activeError,
+                                style: const TextStyle(
+                                  color: Color(0xFF9F1239),
+                                  fontSize: 14,
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              OutlinedButton.icon(
+                                onPressed: _handleSummarize,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF9F1239),
+                                  side: const BorderSide(
+                                    color: Color(0xFFFDA4AF),
+                                    width: 1.5,
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    aiProvider.errorMessage!,
-                                    style: const TextStyle(
-                                      color: Color(0xFF991B1B),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    textAlign: TextAlign.center,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
-                                  const SizedBox(height: 16),
-                                  OutlinedButton.icon(
-                                    onPressed: () => _handleSummarize(context),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF991B1B),
-                                      side: const BorderSide(
-                                          color: Color(0xFFEF4444)),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                    ),
-                                    icon: const Icon(Icons.refresh_rounded,
-                                        size: 18),
-                                    label: const Text(
-                                      'Try again',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                    ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
                                   ),
-                                ],
+                                ),
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Try again',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (aiProvider.summaryResult != null) {
+                      try {
+                        return SummaryView(
+                          key: ValueKey(_activeSections.join(',')),
+                          summary: aiProvider.summaryResult!,
+                          selectedSections: Set<String>.from(_activeSections),
+                        );
+                      } catch (e, stackTrace) {
+                        debugPrint(
+                            'Rendering error in SummaryView: $e\n$stackTrace');
+                        return Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(16.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF1F2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFFECDD3),
                               ),
                             ),
-                          )
-                        : aiProvider.summaryResult != null
-                            ? Builder(
-                                builder: (context) {
-                                  try {
-                                    return SummaryView(
-                                      summary: aiProvider.summaryResult!,
-                                      selectedSections: selectedSections,
-                                    );
-                                  } catch (e, stackTrace) {
-                                    debugPrint(
-                                        'Error rendering SummaryView: $e\n$stackTrace');
-                                    return Center(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(16.0),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFEF2F2),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.error_outline_rounded,
-                                              color: Color(0xFFEF4444),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                'Failed to render summary content: ${e.toString()}',
-                                                style: const TextStyle(
-                                                  color: Color(0xFF991B1B),
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                              )
-                            : Center(
-                                child: Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: cardBgColor,
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            purpleGlow.withValues(alpha: 0.06),
-                                        blurRadius: 16,
-                                        spreadRadius: 2,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.03),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: purpleGlow.withValues(
-                                              alpha: 0.1),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.auto_awesome_rounded,
-                                          color: purpleGlow,
-                                          size: 28,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      const Text(
-                                        'Ready to Summarize',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      const Text(
-                                        'Tap "Generate Summary" to summarize your study note.',
-                                        style: TextStyle(
-                                          color: textSecondary,
-                                          fontSize: 13,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFE11D48),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Failed to display summary output: ${e.toString()}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF9F1239),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    }
+
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: cardBgColor,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: purpleGlow.withValues(alpha: 0.08),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: purpleGlow.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
                               ),
+                              child: const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: purpleGlow,
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Ready to Summarize',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Generating your study note summary...',
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 13,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

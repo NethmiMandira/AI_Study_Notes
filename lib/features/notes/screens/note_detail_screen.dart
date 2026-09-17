@@ -127,97 +127,16 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
   Future<void> _showSummaryOptions() async {
     try {
-      final selectedSections = <String>{
-        'shortSummary',
-        'detailedSummary',
-        'keyPoints',
-        'importantTerms',
-      };
-
-      final result = await showDialog<Set<String>>(
+      final result = await showModalBottomSheet<Set<String>>(
         context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              final options = {
-                'shortSummary': 'Short summary',
-                'detailedSummary': 'Detailed summary',
-                'keyPoints': 'Key points',
-                'importantTerms': 'Important terms',
-              };
-
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                title: const Text(
-                  'Choose summary sections',
-                  style: TextStyle(
-                    color: Color(0xFF1E293B),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: options.entries.map((entry) {
-                    return CheckboxListTile(
-                      activeColor: const Color(0xFFC084FC),
-                      value: selectedSections.contains(entry.key),
-                      title: Text(
-                        entry.value,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      onChanged: (selected) {
-                        setDialogState(() {
-                          if (selected == true) {
-                            selectedSections.add(entry.key);
-                          } else {
-                            selectedSections.remove(entry.key);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: Color(0xFF64748B)),
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFC084FC),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: selectedSections.isEmpty
-                        ? null
-                        : () => Navigator.pop(
-                              dialogContext,
-                              Set<String>.from(selectedSections),
-                            ),
-                    child: const Text('Continue'),
-                  ),
-                ],
-              );
-            },
-          );
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (bottomSheetContext) {
+          return const _ModernSummarySelectorSheet();
         },
       );
 
-      if (!mounted || result == null) return;
+      if (!mounted || result == null || result.isEmpty) return;
 
       await Navigator.push(
         context,
@@ -610,6 +529,245 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ModernSummarySelectorSheet extends StatefulWidget {
+  const _ModernSummarySelectorSheet();
+
+  @override
+  State<_ModernSummarySelectorSheet> createState() =>
+      __ModernSummarySelectorSheetState();
+}
+
+class __ModernSummarySelectorSheetState
+    extends State<_ModernSummarySelectorSheet> {
+  final Set<String> _selectedSections = {
+    'shortSummary',
+    'detailedSummary',
+    'keyPoints',
+    'importantTerms',
+  };
+
+  final List<Map<String, dynamic>> _options = const [
+    {
+      'key': 'shortSummary',
+      'title': 'Short Summary',
+      'subtitle': 'A quick 2-3 sentence overview',
+      'icon': Icons.flash_on_rounded,
+    },
+    {
+      'key': 'detailedSummary',
+      'title': 'Detailed Summary',
+      'subtitle': 'Comprehensive breakdown of content',
+      'icon': Icons.article_rounded,
+    },
+    {
+      'key': 'keyPoints',
+      'title': 'Key Points',
+      'subtitle': 'Bullet points of core concepts',
+      'icon': Icons.task_alt_rounded,
+    },
+    {
+      'key': 'importantTerms',
+      'title': 'Important Terms',
+      'subtitle': 'Definitions and terminology',
+      'icon': Icons.auto_awesome_rounded,
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryColor = Color(0xFFC084FC);
+    const textPrimary = Color(0xFF1E293B);
+    const textSecondary = Color(0xFF64748B);
+
+    final isAllSelected = _selectedSections.length == _options.length;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Summary Format',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    if (isAllSelected) {
+                      _selectedSections.clear();
+                    } else {
+                      _selectedSections.addAll(
+                        _options.map((e) => e['key'] as String),
+                      );
+                    }
+                  });
+                },
+                child: Text(
+                  isAllSelected ? 'Deselect All' : 'Select All',
+                  style: const TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choose the sections you want in your summary',
+            style: TextStyle(
+              fontSize: 14,
+              color: textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Column(
+            children: _options.map((option) {
+              final String key = option['key'];
+              final bool isSelected = _selectedSections.contains(key);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? primaryColor.withValues(alpha: 0.08)
+                        : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? primaryColor
+                          : const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedSections.remove(key);
+                          } else {
+                            _selectedSections.add(key);
+                          }
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? primaryColor
+                                    : const Color(0xFFE2E8F0),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                option['icon'] as IconData,
+                                size: 20,
+                                color: isSelected
+                                    ? Colors.white
+                                    : textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    option['title'],
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected
+                                          ? textPrimary
+                                          : textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    option['subtitle'],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textSecondary.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: _selectedSections.isEmpty
+                  ? null
+                  : () => Navigator.pop(context, _selectedSections),
+              child: const Text(
+                'Generate Summary',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 24 + MediaQuery.viewPaddingOf(context).bottom,
+          ),
+        ],
       ),
     );
   }
