@@ -41,7 +41,9 @@ The JSON object must contain these exact keys:
 - "importantTerms": An object/map with key-value pairs where key is the Term and value is its Definition/Explanation.
 
 Text:
+<study_note>
 $text
+</study_note>
 ''';
 
     final response = await _model.generateContent([Content.text(prompt)]);

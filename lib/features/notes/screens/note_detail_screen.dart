@@ -4,6 +4,7 @@ import 'package:ai_study_notes/data/models/note_model.dart';
 import 'package:ai_study_notes/features/ai_tools/screens/exam_prep_screen.dart';
 import 'package:ai_study_notes/features/ai_tools/screens/summarize_screen.dart';
 import 'package:ai_study_notes/features/ai_tools/screens/translate_screen.dart';
+import 'package:ai_study_notes/features/ai_tools/providers/ai_provider.dart';
 import 'package:ai_study_notes/features/notes/providers/note_provider.dart';
 
 class NoteDetailScreen extends StatefulWidget {
@@ -138,12 +139,16 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
       if (!mounted || result == null || result.isEmpty) return;
 
+      final aiProvider = context.read<AiProvider>();
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SummarizeScreen(
-            noteContent: _contentController.text,
-            selectedSections: result,
+          builder: (_) => ChangeNotifierProvider.value(
+            value: aiProvider.isolatedInstance(),
+            child: SummarizeScreen(
+              noteContent: _contentController.text,
+              selectedSections: result,
+            ),
           ),
         ),
       );
@@ -155,10 +160,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
   void _openTranslator() {
     try {
+      final aiProvider = context.read<AiProvider>();
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => TranslateScreen(noteContent: _contentController.text),
+          builder: (_) => ChangeNotifierProvider.value(
+            value: aiProvider.isolatedInstance(),
+            child: TranslateScreen(noteContent: _contentController.text),
+          ),
         ),
       );
     } catch (e, stackTrace) {
@@ -169,10 +178,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
   void _openExamPrep() {
     try {
+      final aiProvider = context.read<AiProvider>();
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ExamPrepScreen(noteContent: _contentController.text),
+          builder: (_) => ChangeNotifierProvider.value(
+            value: aiProvider.isolatedInstance(),
+            child: ExamPrepScreen(noteContent: _contentController.text),
+          ),
         ),
       );
     } catch (e, stackTrace) {

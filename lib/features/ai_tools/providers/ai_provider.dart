@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:ai_study_notes/data/datasources/remote/gemini_ai_service.dart';
 import 'package:ai_study_notes/data/models/ai_generated_content_model.dart';
 
+enum AiOperation { none, summarize, translate, examPrep }
+
 class AiProvider extends ChangeNotifier {
   final GeminiAiService _aiService;
 
   AiProvider({required GeminiAiService aiService}) : _aiService = aiService;
 
+  AiProvider isolatedInstance() => AiProvider(aiService: _aiService);
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  AiOperation _activeOperation = AiOperation.none;
+  AiOperation get activeOperation => _activeOperation;
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
@@ -52,7 +59,9 @@ class AiProvider extends ChangeNotifier {
       return;
     }
 
-    _summaryResult = null;
+    if (_isLoading) return;
+    _clearActionResults();
+    _activeOperation = AiOperation.summarize;
     _setLoading(true);
     _errorMessage = null;
     try {
@@ -61,6 +70,7 @@ class AiProvider extends ChangeNotifier {
       _errorMessage = _friendlyErrorMessage(error);
     } finally {
       _setLoading(false);
+      _activeOperation = AiOperation.none;
     }
   }
 
@@ -131,10 +141,12 @@ class AiProvider extends ChangeNotifier {
       return;
     }
 
-    _mcqs = [];
+    if (_isLoading) return;
+    _clearActionResults();
     _essays = [];
     _shortAnswers = [];
     _translatedExamPrep = '';
+    _activeOperation = AiOperation.examPrep;
     _setLoading(true);
     _errorMessage = null;
     try {
@@ -150,6 +162,7 @@ class AiProvider extends ChangeNotifier {
       _errorMessage = _friendlyErrorMessage(error);
     } finally {
       _setLoading(false);
+      _activeOperation = AiOperation.none;
     }
   }
 
@@ -200,7 +213,9 @@ class AiProvider extends ChangeNotifier {
       return;
     }
 
-    _translatedText = '';
+    if (_isLoading) return;
+    _clearActionResults();
+    _activeOperation = AiOperation.translate;
     _setLoading(true);
     _errorMessage = null;
     try {
@@ -213,7 +228,17 @@ class AiProvider extends ChangeNotifier {
       _errorMessage = _friendlyErrorMessage(error);
     } finally {
       _setLoading(false);
+      _activeOperation = AiOperation.none;
     }
+  }
+
+  void _clearActionResults() {
+    _summaryResult = null;
+    _translatedText = '';
+    _mcqs = [];
+    _essays = [];
+    _shortAnswers = [];
+    _translatedExamPrep = '';
   }
 
   /// Helper method to clean Markdown code blocks and extract raw translation text

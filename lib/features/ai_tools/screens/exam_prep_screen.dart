@@ -150,7 +150,7 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
           ),
         ),
         title: const Text(
-          'AI Exam Prep',
+          'AI Exam Preparation',
           style: TextStyle(
             color: textPrimary,
             fontSize: 18,
