@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:ai_study_notes/data/datasources/remote/gemini_ai_service.dart';
+import 'package:ai_study_notes/data/datasources/remote/groq_ai_service.dart';
 import 'package:ai_study_notes/data/models/ai_generated_content_model.dart';
 
 enum AiOperation { none, summarize, translate, examPrep }
 
 class AiProvider extends ChangeNotifier {
-  final GeminiAiService _aiService;
+  final GroqAiService _aiService;
 
-  AiProvider({required GeminiAiService aiService}) : _aiService = aiService;
+  AiProvider({required GroqAiService aiService}) : _aiService = aiService;
 
   AiProvider isolatedInstance() => AiProvider(aiService: _aiService);
 
@@ -80,8 +80,8 @@ class AiProvider extends ChangeNotifier {
     final message = rawMessage.toLowerCase();
 
     if (message.contains('503') ||
-      message.contains('high demand') ||
-      message.contains('spikes in demand')) {
+        message.contains('high demand') ||
+        message.contains('spikes in demand')) {
       return 'The AI service is currently experiencing high demand. Please try again in a few moments.';
     }
     if (message.contains('429') ||
@@ -102,10 +102,10 @@ class AiProvider extends ChangeNotifier {
     }
 
     if (message.contains('api key') || message.contains('unauthorized')) {
-      return 'The AI service is not configured correctly. Check the Gemini API key.';
+      return 'The AI service is not configured correctly. Check the Groq API key.';
     }
     if (message.contains('not found') || message.contains('not available')) {
-      return 'The selected Gemini model is unavailable for this account. Update the model configuration and try again.';
+      return 'The selected Groq model is unavailable for this account. Update the model configuration and try again.';
     }
     if (error is FormatException) {
       return 'The AI response was invalid: ${error.message}';
@@ -258,7 +258,7 @@ class AiProvider extends ChangeNotifier {
 
     cleaned = cleaned.trim();
 
-    // Try parsing as JSON object in case Gemini returns a JSON structure
+    // Try parsing as JSON object in case Groq returns a JSON structure
     try {
       final decoded = jsonDecode(cleaned);
       if (decoded is Map<String, dynamic>) {

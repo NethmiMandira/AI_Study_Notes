@@ -1,35 +1,67 @@
 import 'dart:convert';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import '../../models/ai_generated_content_model.dart';
 
-class GeminiAiService {
-  final GenerativeModel _model;
+class GroqAiService {
   final String _apiKey;
+  static const _endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  static const _modelName = 'openai/gpt-oss-120b';
 
-  GeminiAiService({required String apiKey})
-      : _apiKey = apiKey.trim(),
-        _model = GenerativeModel(
-          model: 'gemini-3.6-flash',
-          apiKey: apiKey.trim(),
-          generationConfig: GenerationConfig(
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-            maxOutputTokens: 8192,
-          ),
-        );
+  GroqAiService({required String apiKey}) : _apiKey = apiKey.trim();
 
   void _ensureApiKeyConfigured() {
     if (_apiKey.isEmpty) {
       throw StateError(
-        'GEMINI_API_KEY is not configured. Run Flutter with '
-        '--dart-define=GEMINI_API_KEY=your_google_ai_studio_key.',
+        'GROQ_API_KEY is not configured. Run Flutter with '
+        '--dart-define=GROQ_API_KEY=your_groq_api_key.',
       );
     }
   }
 
+  Future<String> _generateText(
+    String prompt, {
+    bool jsonResponse = false,
+  }) async {
+    _ensureApiKeyConfigured();
+    final response = await http.post(
+      Uri.parse(_endpoint),
+      headers: {
+        'Authorization': 'Bearer $_apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': _modelName,
+        'temperature': 0.2,
+        'max_tokens': 8192,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+        if (jsonResponse) 'response_format': {'type': 'json_object'},
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String detail = 'HTTP ${response.statusCode}';
+      try {
+        final errorBody = jsonDecode(response.body);
+        final message = errorBody['error']?['message'];
+        if (message is String && message.isNotEmpty) detail = message;
+      } catch (_) {
+        // Keep the HTTP status when Groq does not return JSON.
+      }
+      throw Exception('Groq request failed: $detail');
+    }
+
+    final body = jsonDecode(response.body);
+    final content = body['choices']?[0]?['message']?['content'];
+    if (content is! String || content.trim().isEmpty) {
+      throw const FormatException('The AI returned an empty response.');
+    }
+    return content.trim();
+  }
+
   // 1. Summarize Note (Returns SummaryResult with Short, Detailed, Key Points, Terms)
   Future<SummaryResult> summarizeContent(String text) async {
-    _ensureApiKeyConfigured();
     final prompt = '''
 Analyze the following study note and generate a structured summary in JSON format.
 Return ONLY a valid JSON object without markdown formatting or code blocks.
@@ -46,8 +78,7 @@ $text
 </study_note>
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final rawText = response.text ?? '';
+    final rawText = await _generateText(prompt, jsonResponse: true);
 
     // Clean JSON formatting if enclosed in code blocks
     final cleanJson =
@@ -63,7 +94,6 @@ $text
     Set<String> questionTypes,
     int questionCount,
   ) async {
-    _ensureApiKeyConfigured();
     final requestedTypes = questionTypes.join(', ');
     final formatSections = <String>[
       if (questionTypes.contains('mcqs'))
@@ -107,24 +137,16 @@ Text:
 $text
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final rawText = response.text ?? '';
-
-    if (response.candidates.isNotEmpty &&
-        response.candidates.first.finishReason == FinishReason.maxTokens) {
-      throw const FormatException(
-        'The AI response reached the output token limit before completing JSON.',
-      );
-    }
+    final rawText = await _generateText(prompt, jsonResponse: true);
 
     final jsonMap = _decodeJsonObject(rawText);
     for (final key in const ['mcqs', 'essays', 'shortAnswers']) {
       final value = jsonMap[key];
-        if (value == null && !questionTypes.contains(key)) {
-          jsonMap[key] = <dynamic>[];
-        } else if (value is! List) {
-          throw FormatException('Missing or invalid "$key" questions.');
-        }
+      if (value == null && !questionTypes.contains(key)) {
+        jsonMap[key] = <dynamic>[];
+      } else if (value is! List) {
+        throw FormatException('Missing or invalid "$key" questions.');
+      }
     }
     return jsonMap;
   }
@@ -157,12 +179,10 @@ $text
 
   // 3. Translate Note Content
   Future<String> translateContent(String text, String targetLanguage) async {
-    _ensureApiKeyConfigured();
     final prompt =
         'Translate the following study text accurately into $targetLanguage while maintaining academic accuracy and natural tone:\n\n$text';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final translated = response.text?.trim() ?? '';
+    final translated = (await _generateText(prompt)).trim();
     if (translated.isEmpty) {
       throw const FormatException('The AI returned an empty translation.');
     }
@@ -183,7 +203,6 @@ $text
   }
 
   Future<String> translateExamPrep(String text, String targetLanguage) async {
-    _ensureApiKeyConfigured();
     final prompt = '''
 Translate these exam-preparation questions into $targetLanguage.
 Return readable plain text only. Do not return JSON, Markdown code fences, or code.
@@ -193,8 +212,7 @@ Questions:
 $text
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final translated = response.text?.trim() ?? '';
+    final translated = (await _generateText(prompt)).trim();
     if (translated.isEmpty) {
       throw const FormatException('The AI returned an empty translation.');
     }

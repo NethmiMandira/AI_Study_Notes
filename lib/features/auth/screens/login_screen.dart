@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_study_notes/features/notes/screens/home_screen.dart';
 import 'package:ai_study_notes/features/auth/providers/auth_provider.dart';
+import 'package:ai_study_notes/features/auth/screens/enter_email_screen.dart';
 import 'package:ai_study_notes/features/auth/screens/forgot_password_screen.dart';
 import 'package:ai_study_notes/features/auth/widgets/auth_text_field.dart';
 import 'package:ai_study_notes/features/auth/widgets/custom_auth_button.dart';
@@ -118,16 +119,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       final user = credential.user;
       if (user == null) {
-        throw FirebaseAuthException(
-            code: 'unknown', message: 'Login failed.');
+        throw FirebaseAuthException(code: 'unknown', message: 'Login failed.');
       }
 
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
@@ -332,8 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ForgotPasswordScreen()),
+                                  builder: (_) => const ForgotPasswordScreen()),
                             );
                           },
                     style: TextButton.styleFrom(
@@ -369,6 +367,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: textMuted, fontSize: 14),
+                    ),
+                    GestureDetector(
+                      onTap: _isLoading
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const EnterEmailScreen(),
+                                ),
+                              );
+                            },
+                      child: const Text(
+                        'Sign up',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: primaryPurple,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

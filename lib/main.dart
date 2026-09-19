@@ -6,12 +6,11 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'package:ai_study_notes/firebase_options.dart';
 
-
 import 'package:ai_study_notes/features/auth/providers/auth_provider.dart';
 import 'package:ai_study_notes/features/notes/providers/note_provider.dart';
 import 'package:ai_study_notes/features/ai_tools/providers/ai_provider.dart';
 import 'package:ai_study_notes/features/settings/providers/settings_provider.dart';
-import 'package:ai_study_notes/data/datasources/remote/gemini_ai_service.dart';
+import 'package:ai_study_notes/data/datasources/remote/groq_ai_service.dart';
 
 import 'package:ai_study_notes/features/auth/screens/splash_screen.dart';
 
@@ -19,13 +18,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env', isOptional: true);
-  
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -34,15 +31,14 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-     
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => NoteProvider()),
         ChangeNotifierProvider(
           create: (_) => AiProvider(
-            aiService: GeminiAiService(
-              apiKey: const String.fromEnvironment('GEMINI_API_KEY').isNotEmpty
-                  ? const String.fromEnvironment('GEMINI_API_KEY')
-                  : dotenv.env['GEMINI_API_KEY'] ?? '',
+            aiService: GroqAiService(
+              apiKey: const String.fromEnvironment('GROQ_API_KEY').isNotEmpty
+                  ? const String.fromEnvironment('GROQ_API_KEY')
+                  : dotenv.env['GROQ_API_KEY'] ?? '',
             ),
           ),
         ),

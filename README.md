@@ -2,14 +2,14 @@
 
 AI_Study_Notes is a Flutter application for creating, organizing, and learning
 from study notes. It combines Firebase authentication and cloud storage with
-Gemini-powered tools for summarization, exam preparation, and translation.
+Groq-powered tools for summarization, exam preparation, and translation.
 
 ## Features
 
 - Email verification and password-based authentication
 - Google sign-in support
 - Create, edit, search, view, and delete study notes
-- Generate summaries with Google Gemini
+- Generate summaries with Groq AI
 - Create exam-preparation questions, including multiple-choice and essay questions
 - Translate study content into a selected language
 - Firebase-backed user and note data
@@ -20,7 +20,7 @@ Gemini-powered tools for summarization, exam preparation, and translation.
 - Firebase Authentication
 - Cloud Firestore
 - Google Sign-In
-- Google Gemini API via `google_generative_ai`
+- Groq Cloud API via HTTP
 - Provider for state management
 - `flutter_dotenv` for local environment configuration
 
@@ -29,7 +29,7 @@ Gemini-powered tools for summarization, exam preparation, and translation.
 - Flutter SDK with Dart 3 or newer
 - A configured Firebase project
 - Android Studio and/or Xcode for mobile development
-- A Google AI Studio Gemini API key for the AI tools
+- A Groq Cloud API key for the AI tools
 
 Check the local Flutter installation with:
 
@@ -58,7 +58,7 @@ flutter pub get
 copy .env.example .env
 ```
 
-Update `.env` with your own Gemini API key. Keep this file private and never
+Update `.env` with your own Groq API key. Keep this file private and never
 commit it to GitHub.
 
 4. Configure Firebase locally for the platforms you want to run. The repository
@@ -80,11 +80,11 @@ The app loads the `.env` file when it is available. You can also pass the key
 at build time:
 
 ```dotenv
-GEMINI_API_KEY=your_google_ai_studio_key
+GROQ_API_KEY=your_groq_api_key
 ```
 
 ```powershell
-flutter run --dart-define=GEMINI_API_KEY=your_google_ai_studio_key
+flutter run --dart-define=GROQ_API_KEY=your_groq_api_key
 ```
 
 For a release build, pass the same define to the build command. Never commit a
@@ -129,8 +129,9 @@ service calls.
 
 - Do not commit `.env` or real API keys.
 - Firebase configuration values identify a Firebase app, but they are not a
-  replacement for the Gemini API key.
-- Restrict Gemini API keys in Google AI Studio and rotate them if they are
+
+  replacement for the Groq API key.
+- Restrict Groq API keys in Groq Cloud and rotate them if they are
 	exposed.
 - Configure Firebase Authentication and Firestore security rules before using
 	the app with production data.
